@@ -7,6 +7,7 @@ use crossterm::{
 };
 use ratatui::{prelude::*, widgets::*};
 use std::io::prelude::*;
+use std::net::TcpStream;
 
 fn startup() -> Result<()> {
     enable_raw_mode()?;
@@ -33,7 +34,9 @@ const SYSTEM_MSG_PREFIX: &str = "SYSTEM: ";
 
 #[derive(Parser)]
 struct Server {
+    #[clap(default_value = "0.0.0.0")]
     ip: String,
+    #[clap(default_value = "8080")]
     port: u16,
 }
 
@@ -64,12 +67,11 @@ impl App {
     fn reset_cursor(&mut self) {
         self.cursor_position = 0;
     }
-    fn submit_message(&mut self) {
+    fn submit_message(&mut self) -> Result<()> {
         if !self.input.is_empty() {
-            self.server_socket
-                .write_all(self.input.as_bytes())
-                .expect("Failed to send message");
+            self.server_socket.write_all(self.input.as_bytes())?;
         }
+        Ok(())
     }
     fn clear_input(&mut self) {
         self.input.clear();
@@ -183,7 +185,7 @@ fn update(app: &mut App) -> Result<()> {
                     Char(c) => app.add_char(c),
                     event::KeyCode::Backspace => app.remove_char(),
                     event::KeyCode::Enter => {
-                        app.submit_message();
+                        app.submit_message()?;
                         app.reset_cursor();
                         app.clear_input();
                     }
@@ -207,7 +209,7 @@ fn run() -> Result<()> {
         input: String::new(),
         cursor_position: 0,
         messages: vec![],
-        server_socket: std::net::TcpStream::connect(format!("{}:{}", args.ip, args.port))?,
+        server_socket: TcpStream::connect(format!("{}:{}", args.ip, args.port))?,
         should_quit: false,
     };
     app.server_socket.set_nonblocking(true)?;
@@ -239,4 +241,97 @@ fn main() -> Result<()> {
     result?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const SAMPLE_TEXT: &str =
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse";
+
+    #[test]
+    fn test_invalid_cursor_moves() {
+        let args = Server::parse();
+        let mut app = App {
+            input: SAMPLE_TEXT.to_string(),
+            cursor_position: 0,
+            messages: vec![],
+            server_socket: TcpStream::connect(format!("{}:{}", args.ip, args.port)).unwrap(),
+            should_quit: false,
+        };
+        app.move_cursor_left();
+        assert_eq!(app.cursor_position, 0);
+        for i in 0..app.input.len() {
+            app.move_cursor_right();
+            assert_eq!(app.cursor_position, i + 1);
+        }
+        app.move_cursor_right();
+        assert_eq!(app.cursor_position, app.input.len());
+    }
+
+    #[test]
+    fn test_inserts_and_deletions() {
+        let args = Server::parse();
+        let mut app = App {
+            input: SAMPLE_TEXT.to_string(),
+            cursor_position: 0,
+            messages: vec![],
+            server_socket: TcpStream::connect(format!("{}:{}", args.ip, args.port)).unwrap(),
+            should_quit: false,
+        };
+        app.add_char('a');
+        assert_eq!(app.input, format!("a{}", SAMPLE_TEXT));
+        app.remove_char();
+        assert_eq!(app.input, SAMPLE_TEXT);
+        app.move_cursor_right();
+        app.move_cursor_right();
+        app.add_char('a');
+        assert_eq!(app.input, format!("Loarem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse"));
+        app.move_cursor_left();
+        app.move_cursor_left();
+        app.remove_char();
+        assert_eq!(app.input, format!("oarem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse"));
+    }
+
+    #[test]
+    fn test_split_line() {
+        let (line, lines_used) = split_line(SAMPLE_TEXT, 10);
+        assert_eq!(lines_used, 9);
+        assert_eq!(
+            line,
+            "Lorem ipsu\nm dolor si\nt amet, co\nnsectetur \nadipiscing\n elit. Sed\n non risus\n. Suspendi\nsse"
+        );
+    }
+
+    #[test]
+    fn test_messages() {
+        let args = Server::parse();
+        let mut app = App {
+            input: SAMPLE_TEXT.to_string(),
+            cursor_position: 0,
+            messages: vec![],
+            server_socket: TcpStream::connect(format!("{}:{}", args.ip, args.port)).unwrap(),
+            should_quit: false,
+        };
+        app.get_messages().unwrap();
+        assert_eq!(
+            app.messages[0],
+            "SYSTEM: [00:00] Please enter [username]:[password]"
+        );
+
+        app.input = "ptr:123456".to_string();
+        app.submit_message().unwrap();
+
+        app.get_messages().unwrap();
+        assert_eq!(app.messages[1], "SYSTEM: [00:00] Welcome to the chat!");
+
+        app.get_messages().unwrap();
+        assert_eq!(app.messages[2], "SYSTEM: [00:00] ptr logged in");
+
+        app.input = "Hello there!".to_string();
+        app.submit_message().unwrap();
+
+        app.get_messages().unwrap();
+        assert_eq!(app.messages[3], "[00:00] ptr: Hello there!");
+    }
 }
