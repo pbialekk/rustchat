@@ -106,9 +106,6 @@ fn split_line(line: &str, width: usize, input_mode: bool) -> (String, u16) {
     let mut lines_used = 1;
     while line.len() > width {
         let mut i = width;
-        while !line.is_char_boundary(i) {
-            i -= 1;
-        }
         let ibeg = i;
         while i >= 1 && !line.chars().nth(i - 1).unwrap().is_whitespace() {
             i -= 1;
@@ -222,11 +219,23 @@ fn ui(app: &App, f: &mut Frame) {
         .block(Block::default().borders(Borders::ALL).title("Input"));
     f.render_widget(input, chunks[2]);
 
-    let last_line_len = user_input.split('\n').last().unwrap_or("").len() as u16;
-    let cursor_x = chunks[2].x + last_line_len;
-    let cursor_y = chunks[2].y + lines_used - 1;
+    let mut cursor_x = chunks[2].x + 1;
+    let mut cursor_y = chunks[2].y + 1;
+    let mut chars_seen = 0;
+    for c in user_input.chars() {
+        if c == '\n' {
+            cursor_x = chunks[2].x + 1;
+            cursor_y += 1;
+        } else {
+            if chars_seen == app.cursor_position {
+                break;
+            }
+            chars_seen += 1;
+            cursor_x += 1;
+        }
+    }
 
-    f.set_cursor(cursor_x + 1, cursor_y + 1);
+    f.set_cursor(cursor_x, cursor_y);
 }
 
 fn update(app: &mut App) -> Result<()> {
