@@ -80,7 +80,7 @@ impl App {
         self.input.clear();
     }
     fn get_messages(&mut self) -> Result<()> {
-        let mut buffer = [0; MAX_LENGTH];
+        let mut buffer = [0; MAX_LENGTH + 24]; // +24 for username and timestamp
         match self.server_socket.read(&mut buffer) {
             Ok(n) => {
                 for message in String::from_utf8_lossy(&buffer[..n]).split('\n') {
@@ -97,7 +97,7 @@ impl App {
     }
 }
 
-fn split_line(line: &str, width: usize) -> (String, u16) {
+fn split_line(line: &str, width: usize, input_mode: bool) -> (String, u16) {
     let mut ret = String::new();
     let mut line = line.to_string();
     if line.starts_with(SYSTEM_MSG_PREFIX) {
@@ -109,13 +109,20 @@ fn split_line(line: &str, width: usize) -> (String, u16) {
         while !line.is_char_boundary(i) {
             i -= 1;
         }
+        let ibeg = i;
+        while i >= 1 && !line.chars().nth(i - 1).unwrap().is_whitespace() {
+            i -= 1;
+        }
+        if i == 0 {
+            i = ibeg;
+        }
         ret.push_str(&line[..i]);
         ret.push('\n');
         lines_used += 1;
         line = line[i..].to_string();
     }
     ret.push_str(&line);
-    if line.len() == width {
+    if line.len() == width && input_mode == true {
         lines_used += 1;
     }
     (ret, lines_used)
@@ -138,7 +145,7 @@ fn gen_color(uname: String) -> Color {
 }
 
 fn ui(app: &App, f: &mut Frame) {
-    let (user_input, lines_used) = split_line(&app.input, f.size().width as usize - 2);
+    let (user_input, lines_used) = split_line(&app.input, f.size().width as usize - 2, true);
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -166,29 +173,39 @@ fn ui(app: &App, f: &mut Frame) {
     let mut msgs = app.messages.clone();
     let mut sum_lengths = msgs
         .iter()
-        .map(|m| split_line(m, chunks[1].width as usize - 2).1)
+        .map(|m| split_line(m, chunks[1].width as usize - 2, false).1)
         .sum::<u16>() as usize;
-    while sum_lengths < chunks[1].height as usize - 2 {
+    while sum_lengths + 2 < chunks[1].height as usize {
         msgs.insert(0, "".to_string());
         sum_lengths += 1;
     }
-    while sum_lengths > chunks[1].height as usize - 2 {
+    while sum_lengths + 2 > chunks[1].height as usize {
+        if msgs.len() == 0 {
+            f.render_widget(
+                Paragraph::new(Text::from(
+                    "Your input text is too long for such small terminal height!",
+                )),
+                chunks[2],
+            );
+            return;
+        }
+        sum_lengths -= split_line(&msgs[0], chunks[1].width as usize - 2, false).1 as usize;
         msgs.remove(0);
-        sum_lengths -= 1;
     }
 
     let messages: Vec<ListItem> = msgs
         .iter()
         .map(|m| {
-            ListItem::new(Text::from(split_line(m, chunks[1].width as usize - 2).0)).style(
-                Style::default().fg(if m.starts_with(SYSTEM_MSG_PREFIX) {
-                    Color::LightYellow
-                } else if m.len() > 0 {
-                    gen_color(m.split(' ').nth(1).unwrap().to_string())
-                } else {
-                    Color::default()
-                }),
-            )
+            ListItem::new(Text::from(
+                split_line(m, chunks[1].width as usize - 2, false).0,
+            ))
+            .style(Style::default().fg(if m.starts_with(SYSTEM_MSG_PREFIX) {
+                Color::LightYellow
+            } else if m.len() > 0 {
+                gen_color(m.split(' ').nth(1).unwrap().to_string())
+            } else {
+                Color::default()
+            }))
         })
         .collect();
 
@@ -201,12 +218,13 @@ fn ui(app: &App, f: &mut Frame) {
     );
     f.render_widget(messages, chunks[1]);
 
-    let input =
-        Paragraph::new(user_input).block(Block::default().borders(Borders::ALL).title("Input"));
+    let input = Paragraph::new(user_input.clone())
+        .block(Block::default().borders(Borders::ALL).title("Input"));
     f.render_widget(input, chunks[2]);
 
-    let cursor_x = chunks[2].x + (app.cursor_position as u16) % (chunks[1].width - 2);
-    let cursor_y = chunks[2].y + (app.cursor_position as u16) / (chunks[1].width - 2);
+    let last_line_len = user_input.split('\n').last().unwrap_or("").len() as u16;
+    let cursor_x = chunks[2].x + last_line_len;
+    let cursor_y = chunks[2].y + lines_used - 1;
 
     f.set_cursor(cursor_x + 1, cursor_y + 1);
 }
@@ -329,11 +347,11 @@ mod tests {
 
     #[test]
     fn test_split_line() {
-        let (line, lines_used) = split_line(SAMPLE_TEXT, 10);
-        assert_eq!(lines_used, 9);
+        let (line, lines_used) = split_line(SAMPLE_TEXT, 10, false);
+        assert_eq!(lines_used, 12);
         assert_eq!(
             line,
-            "Lorem ipsu\nm dolor si\nt amet, co\nnsectetur \nadipiscing\n elit. Sed\n non risus\n. Suspendi\nsse"
+            "Lorem \nipsum \ndolor sit \namet, \nconsectetu\nr \nadipiscing\n elit. \nSed non \nrisus. \nSuspendiss\ne"
         );
     }
 
