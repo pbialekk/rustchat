@@ -25,7 +25,7 @@ jobs:
 
       - name: Install components
         shell: bash
-        run: rustup component add clippy rustfmt; apt install screen -y
+        run: rustup component add clippy rustfmt; sudo apt install screen -y
 
       - name: Run format checks
         shell: bash
