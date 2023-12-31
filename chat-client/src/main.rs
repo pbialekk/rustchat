@@ -229,7 +229,7 @@ fn run() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let args = Server::parse(); // We check for valid arguments here, so user doesn't see garbage on the screen due to RAW mode being enabled
+    let _ = Server::parse(); // We check for valid arguments here, so user doesn't see garbage on the screen due to RAW mode being enabled
 
     startup()?;
 
