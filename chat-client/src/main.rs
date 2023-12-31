@@ -148,8 +148,8 @@ fn ui(app: &App, f: &mut Frame) {
         Paragraph::new(user_input).block(Block::default().borders(Borders::ALL).title("Input"));
     f.render_widget(input, chunks[1]);
 
-    let cursor_x = chunks[1].x + (app.cursor_position as u16) % (chunks[1].width - 2) as u16;
-    let cursor_y = chunks[1].y + (app.cursor_position as u16) / (chunks[1].width - 2) as u16;
+    let cursor_x = chunks[1].x + (app.cursor_position as u16) % (chunks[1].width - 2);
+    let cursor_y = chunks[1].y + (app.cursor_position as u16) / (chunks[1].width - 2);
 
     f.set_cursor(cursor_x + 1, cursor_y + 1);
 
