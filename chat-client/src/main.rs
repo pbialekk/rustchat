@@ -37,24 +37,6 @@ struct Server {
     port: u16,
 }
 
-impl Default for App {
-    fn default() -> Self {
-        let args = Server::parse();
-        let ret = Self {
-            input: String::new(),
-            cursor_position: 0,
-            messages: Vec::new(),
-            server_socket: std::net::TcpStream::connect(format!("{}:{}", args.ip, args.port))
-                .expect("Failed to connect to server"),
-            should_quit: false,
-        };
-        ret.server_socket
-            .set_nonblocking(true)
-            .expect("set_nonblocking call failed");
-        ret
-    }
-}
-
 impl App {
     fn move_cursor_left(&mut self) {
         if self.cursor_position > 0 {
@@ -92,7 +74,7 @@ impl App {
     fn clear_input(&mut self) {
         self.input.clear();
     }
-    fn get_messages(&mut self) {
+    fn get_messages(&mut self) -> Result<()> {
         let mut buffer = [0; MAX_LENGTH];
         match self.server_socket.read(&mut buffer) {
             Ok(n) => {
@@ -104,8 +86,9 @@ impl App {
                 assert!(n == 0 || buffer[n - 1] == b'\n');
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-            Err(e) => panic!("encountered IO error: {}", e),
+            Err(e) => Result::Err(e)?,
         }
+        Ok(())
     }
 }
 
@@ -143,6 +126,8 @@ fn ui(app: &App, f: &mut Frame) {
             Constraint::Min(1),
         ])
         .split(f.size());
+
+    let args = Server::parse();
     let msg = vec![
         "Press ".into(),
         "ESC".bold(),
@@ -157,6 +142,8 @@ fn ui(app: &App, f: &mut Frame) {
         format!("{}/{}", app.input.len(), MAX_LENGTH).bold(),
         ". UTC time: ".into(),
         format!("{}", chrono::Utc::now().format("%H:%M:%S")).bold(),
+        " Connected to ".into(),
+        format!("{}:{}", args.ip, args.port).bold(),
     ];
 
     let help_message = Paragraph::new(Text::from(Line::from(msg)));
@@ -209,14 +196,22 @@ fn update(app: &mut App) -> Result<()> {
             }
         }
     }
-    app.get_messages();
+    app.get_messages()?;
     Ok(())
 }
 
 fn run() -> Result<()> {
     let mut t = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
 
-    let mut app = App::default();
+    let args = Server::parse();
+    let mut app = App {
+        input: String::new(),
+        cursor_position: 0,
+        messages: vec![],
+        server_socket: std::net::TcpStream::connect(format!("{}:{}", args.ip, args.port))?,
+        should_quit: false,
+    };
+    app.server_socket.set_nonblocking(true)?;
 
     loop {
         update(&mut app)?;
@@ -234,6 +229,8 @@ fn run() -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    let args = Server::parse(); // We check for valid arguments here, so user doesn't see garbage on the screen due to RAW mode being enabled
+
     startup()?;
 
     let result = run();
