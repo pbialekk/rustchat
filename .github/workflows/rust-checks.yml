@@ -37,7 +37,7 @@ jobs:
       
       - name: Run server in background and wait for it to start
         shell: bash
-        run: screen -d -m cargo run -p chat_server -xS chat_server; sleep 2
+        run: screen -d -m cargo run -p chat_server; sleep 2
 
       - name: Run tests
         shell: bash
