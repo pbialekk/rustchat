@@ -127,23 +127,16 @@ fn ui(app: &App, f: &mut Frame) {
         ])
         .split(f.size());
 
-    let args = Server::parse();
     let msg = vec![
         "Press ".into(),
         "ESC".bold(),
         " to exit, ".into(),
         "ENTER".bold(),
         " to send message. ".into(),
-        "System messages are in ".into(),
-        "yellow"
-            .set_style(Style::default().fg(Color::LightYellow))
-            .bold(),
-        ". Input length: ".into(),
+        "Input length: ".into(),
         format!("{}/{}", app.input.len(), MAX_LENGTH).bold(),
         ". UTC time: ".into(),
         format!("{}", chrono::Utc::now().format("%H:%M:%S")).bold(),
-        " Connected to ".into(),
-        format!("{}:{}", args.ip, args.port).bold(),
     ];
 
     let help_message = Paragraph::new(Text::from(Line::from(msg)));
@@ -172,7 +165,13 @@ fn ui(app: &App, f: &mut Frame) {
             )
         })
         .collect();
-    let messages = List::new(messages).block(Block::default().borders(Borders::ALL).title("Chat"));
+
+    let args = Server::parse();
+    let messages = List::new(messages).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(format!("Chat @ {}:{}", args.ip, args.port)),
+    );
     f.render_widget(messages, chunks[2]);
 }
 
