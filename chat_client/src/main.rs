@@ -164,17 +164,23 @@ fn ui(app: &App, f: &mut Frame) {
     f.render_widget(help_message, chunks[0]);
 
     let mut msgs = app.messages.clone();
-    while msgs.len() < chunks[1].height as usize - 2 {
+    let mut sum_lengths = msgs
+        .iter()
+        .map(|m| split_line(m, chunks[1].width as usize - 2).1)
+        .sum::<u16>() as usize;
+    while sum_lengths < chunks[1].height as usize - 2 {
         msgs.insert(0, "".to_string());
+        sum_lengths += 1;
     }
-    while msgs.len() > chunks[1].height as usize - 2 {
+    while sum_lengths > chunks[1].height as usize - 2 {
         msgs.remove(0);
+        sum_lengths -= 1;
     }
 
     let messages: Vec<ListItem> = msgs
         .iter()
         .map(|m| {
-            ListItem::new(Text::from(split_line(m, chunks[2].width as usize).0)).style(
+            ListItem::new(Text::from(split_line(m, chunks[1].width as usize - 2).0)).style(
                 Style::default().fg(if m.starts_with(SYSTEM_MSG_PREFIX) {
                     Color::LightYellow
                 } else if m.len() > 0 {
