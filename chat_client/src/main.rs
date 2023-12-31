@@ -5,7 +5,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{prelude::*, widgets::*};
+use ratatui::{
+    prelude::*,
+    widgets::{block::Position, *},
+};
 use std::io::prelude::*;
 use std::net::TcpStream;
 
@@ -118,14 +121,30 @@ fn split_line(line: &str, width: usize) -> (String, u16) {
     (ret, lines_used)
 }
 
+fn gen_color(uname: String) -> Color {
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    uname.hash(&mut hasher);
+    let hash = hasher.finish();
+    let colors = [
+        Color::LightRed,
+        Color::LightGreen,
+        Color::LightBlue,
+        Color::LightMagenta,
+        Color::LightCyan,
+    ];
+    colors[(hash % colors.len() as u64) as usize]
+}
+
 fn ui(app: &App, f: &mut Frame) {
     let (user_input, lines_used) = split_line(&app.input, f.size().width as usize - 2);
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1),
-            Constraint::Length(2 + lines_used),
             Constraint::Min(1),
+            Constraint::Length(2 + lines_used),
         ])
         .split(f.size());
 
@@ -144,23 +163,22 @@ fn ui(app: &App, f: &mut Frame) {
     let help_message = Paragraph::new(Text::from(Line::from(msg)));
     f.render_widget(help_message, chunks[0]);
 
-    let input =
-        Paragraph::new(user_input).block(Block::default().borders(Borders::ALL).title("Input"));
-    f.render_widget(input, chunks[1]);
+    let mut msgs = app.messages.clone();
+    while msgs.len() < chunks[1].height as usize - 2 {
+        msgs.insert(0, "".to_string());
+    }
+    while msgs.len() > chunks[1].height as usize - 2 {
+        msgs.remove(0);
+    }
 
-    let cursor_x = chunks[1].x + (app.cursor_position as u16) % (chunks[1].width - 2);
-    let cursor_y = chunks[1].y + (app.cursor_position as u16) / (chunks[1].width - 2);
-
-    f.set_cursor(cursor_x + 1, cursor_y + 1);
-
-    let messages: Vec<ListItem> = app
-        .messages
+    let messages: Vec<ListItem> = msgs
         .iter()
-        .rev()
         .map(|m| {
             ListItem::new(Text::from(split_line(m, chunks[2].width as usize).0)).style(
                 Style::default().fg(if m.starts_with(SYSTEM_MSG_PREFIX) {
                     Color::LightYellow
+                } else if m.len() > 0 {
+                    gen_color(m.split(' ').nth(1).unwrap().to_string())
                 } else {
                     Color::default()
                 }),
@@ -172,9 +190,19 @@ fn ui(app: &App, f: &mut Frame) {
     let messages = List::new(messages).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!("Chat @ {}:{}", args.ip, args.port)),
+            .title(format!("Chat @ {}:{}", args.ip, args.port))
+            .title_position(Position::Bottom),
     );
-    f.render_widget(messages, chunks[2]);
+    f.render_widget(messages, chunks[1]);
+
+    let input =
+        Paragraph::new(user_input).block(Block::default().borders(Borders::ALL).title("Input"));
+    f.render_widget(input, chunks[2]);
+
+    let cursor_x = chunks[2].x + (app.cursor_position as u16) % (chunks[1].width - 2);
+    let cursor_y = chunks[2].y + (app.cursor_position as u16) / (chunks[1].width - 2);
+
+    f.set_cursor(cursor_x + 1, cursor_y + 1);
 }
 
 fn update(app: &mut App) -> Result<()> {
