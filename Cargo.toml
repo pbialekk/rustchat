@@ -3,6 +3,6 @@
 resolver = "2"
 
 members = [
-    "chat-client",
-    "chat-server",
+    "chat_client",
+    "chat_server",
 ]
