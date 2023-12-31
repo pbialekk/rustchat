@@ -1,5 +1,5 @@
 [package]
-name = "chat-server"
+name = "chat_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.78"
 chrono = "0.4.31"
+serial_test = "2.0.0"
 tokio = { version = "1.15.0", features = ["full"] }

@@ -25,7 +25,7 @@ jobs:
 
       - name: Install components
         shell: bash
-        run: rustup component add clippy rustfmt
+        run: rustup component add clippy rustfmt; apt install screen -y
 
       - name: Run format checks
         shell: bash
@@ -34,10 +34,18 @@ jobs:
       - name: Run linter
         shell: bash
         run: cargo clippy
+      
+      - name: Run server in background and sleep for 1 second
+        shell: bash
+        run: screen -d -m cargo run -p chat_server && sleep 1
 
       - name: Run tests
         shell: bash
         run: cargo test
+
+      - name: Kill server
+        shell: bash
+        run: screen -X -S chat_server quit
 
 # You can also use dedicated actions:
 # - https://github.com/actions-rs (popular, but abandoned recently)

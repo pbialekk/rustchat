@@ -6,20 +6,24 @@ use tokio::{
     sync::broadcast::Sender,
 };
 
-const MAX_LINE_LENGTH: usize = 1024;
-const LOGIN_PROMPT: &str = "Please enter [username]:[password]\n";
-const WELCOME_MSG: &str = "Welcome to the chat!\n";
-const BAD_LOGIN_MSG: &str = "Wrong username or password\n";
-const SYSTEM_MSG_PREF: &str = "SYSTEM:";
+pub const MAX_LINE_LENGTH: usize = 1024;
+pub const LOGIN_PROMPT: &str = "Please enter [username]:[password]\n";
+pub const WELCOME_MSG: &str = "Welcome to the chat!\n";
+pub const BAD_LOGIN_MSG: &str = "Wrong username or password\n";
+pub const SYSTEM_MSG_PREF: &str = "SYSTEM:";
 
 fn get_time() -> String {
+    // for testing purposes
+    if cfg!(debug_assertions) {
+        return "00:00".to_string();
+    }
     chrono::Utc::now().format("%H:%M").to_string()
 }
 
-fn system_msg(msg: &str) -> String {
+pub fn system_msg(msg: &str) -> String {
     format!("{SYSTEM_MSG_PREF} [{}] {msg}\n", get_time())
 }
-fn normal_msg(uname: &str, msg: &str) -> String {
+pub fn normal_msg(uname: &str, msg: &str) -> String {
     format!("[{}] {uname}: {msg}\n", get_time())
 }
 
