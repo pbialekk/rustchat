@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     "chat-client",
     "chat-server",
