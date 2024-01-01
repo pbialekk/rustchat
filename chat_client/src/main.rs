@@ -1,6 +1,7 @@
 pub mod app;
 pub mod helper_fns;
 pub mod run;
+pub mod tui;
 pub mod ui;
 pub mod update;
 
@@ -8,34 +9,14 @@ use crate::app::Server;
 use crate::run::run;
 use anyhow::Result;
 use clap::Parser;
-use crossterm::{
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
 
 const MAX_LENGTH: usize = 1000;
 const SYSTEM_MSG_PREFIX: &str = "SYSTEM: ";
 
-fn startup() -> Result<()> {
-    enable_raw_mode()?;
-    execute!(std::io::stderr(), EnterAlternateScreen)?;
-    Ok(())
-}
-
-fn shutdown() -> Result<()> {
-    execute!(std::io::stderr(), LeaveAlternateScreen)?;
-    disable_raw_mode()?;
-    Ok(())
-}
-
 fn main() -> Result<()> {
     let _ = Server::parse(); // We check for valid arguments here, so user doesn't see garbage on the screen due to RAW mode being enabled
 
-    startup()?;
-
     let result = run();
-
-    shutdown()?;
 
     result?;
 

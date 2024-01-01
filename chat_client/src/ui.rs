@@ -9,7 +9,7 @@ use crate::app::Server;
 use crate::helper_fns::{gen_color, split_line};
 use crate::{MAX_LENGTH, SYSTEM_MSG_PREFIX};
 
-pub fn ui(app: &App, f: &mut Frame) {
+pub fn render(app: &App, f: &mut Frame) {
     let (user_input, lines_used) = split_line(&app.input, f.size().width as usize - 2, true);
     let chunks = Layout::default()
         .direction(Direction::Vertical)
