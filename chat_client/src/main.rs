@@ -5,10 +5,8 @@ pub mod tui;
 pub mod ui;
 pub mod update;
 
-use crate::app::Server;
 use crate::run::run;
 use anyhow::Result;
-use clap::Parser;
 
 const MAX_LENGTH: usize = 1000;
 const SYSTEM_MSG_PREFIX: &str = "SYSTEM: ";

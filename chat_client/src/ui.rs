@@ -45,7 +45,7 @@ pub fn render(app: &App, f: &mut Frame) {
         sum_lengths += 1;
     }
     while sum_lengths + 2 > chunks[1].height as usize {
-        if msgs.len() == 0 {
+        if msgs.is_empty() {
             f.render_widget(
                 Paragraph::new(Text::from(
                     "Your input text is too long for such small terminal height!",
@@ -66,7 +66,7 @@ pub fn render(app: &App, f: &mut Frame) {
             ))
             .style(Style::default().fg(if m.starts_with(SYSTEM_MSG_PREFIX) {
                 Color::LightYellow
-            } else if m.len() > 0 {
+            } else if !m.is_empty() {
                 gen_color(m.split(' ').nth(1).unwrap().to_string())
             } else {
                 Color::default()

@@ -24,7 +24,7 @@ pub fn split_line(line: &str, width: usize, input_mode: bool) -> (String, u16) {
         line = line[i..].to_string();
     }
     ret.push_str(&line);
-    if line.len() == width && input_mode == true {
+    if line.len() == width && input_mode {
         lines_used += 1;
     }
     (ret, lines_used)
