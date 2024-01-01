@@ -21,8 +21,9 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::app::App;
+    use crate::app::Server;
+    use clap::Parser;
     use std::net::TcpStream;
     const SAMPLE_TEXT: &str =
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse";
