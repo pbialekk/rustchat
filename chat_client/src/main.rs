@@ -14,8 +14,6 @@ const MAX_LENGTH: usize = 1000;
 const SYSTEM_MSG_PREFIX: &str = "SYSTEM: ";
 
 fn main() -> Result<()> {
-    let _ = Server::parse(); // We check for valid arguments here, so user doesn't see garbage on the screen due to RAW mode being enabled
-
     let result = run();
 
     result?;
